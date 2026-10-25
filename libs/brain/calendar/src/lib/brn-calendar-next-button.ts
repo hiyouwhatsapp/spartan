@@ -2,6 +2,7 @@ import { computed, Directive } from '@angular/core';
 import { injectDateAdapter } from '@spartan-ng/brain/date-time';
 import { injectBrnCalendar } from './brn-calendar.token';
 import { injectBrnCalendarI18n } from './i18n/calendar-i18n';
+import { findEnabledDateInMonth } from './utils/find-enabled-date-in-month';
 
 @Directive({
 	selector: 'button[brnCalendarNextButton]',
@@ -25,50 +26,30 @@ export class BrnCalendarNextButton {
 	/** Access the calendar i18n */
 	protected readonly _i18n = injectBrnCalendarI18n();
 
+	/** Find a selectable day in the next month, if one exists. */
+	private readonly _targetDate = computed(() =>
+		findEnabledDateInMonth(this.nextMonthTarget(), this._dateAdapter, (date) => this._calendar.isDateDisabled(date), 1),
+	);
+
 	/** Whether navigating to the next month is disabled. */
-	protected readonly _disabled = computed(() => {
-		const { targetDate, possibleDate } = this.nextMonthTarget();
-		const effective = this._dateAdapter.isSameMonth(possibleDate, targetDate) ? possibleDate : targetDate;
-		return this._calendar.isDateDisabled(effective);
-	});
+	protected readonly _disabled = computed(() => this._targetDate() === undefined);
 
 	/** Focus the next month */
 	protected focusNextMonth(): void {
-		if (this._disabled()) {
-			return;
+		const targetDate = this._targetDate();
+		if (targetDate !== undefined) {
+			this._calendar.setFocusedDate(targetDate);
 		}
-
-		const { targetDate, possibleDate } = this.nextMonthTarget();
-
-		if (this._dateAdapter.isSameMonth(possibleDate, targetDate)) {
-			// if this date is within the same month, then focus it
-			this._calendar.setFocusedDate(possibleDate);
-			return;
-		}
-
-		this._calendar.setFocusedDate(targetDate);
 	}
 
-	/** @internal The target date in the next month and its constrained counterpart. */
-	private nextMonthTarget(): { targetDate: unknown; possibleDate: unknown } {
+	/** @internal Keep the same day number where possible when changing months. */
+	private nextMonthTarget(): unknown {
 		const focusedDate = this._calendar.focusedDate();
-		const date = this._dateAdapter.getDate(focusedDate);
+		const day = this._dateAdapter.getDate(focusedDate);
 
-		// go to start of month first, then add 1 month to avoid day overflow
-		let nextMonthTarget = this._dateAdapter.startOfMonth(focusedDate);
-		nextMonthTarget = this._dateAdapter.add(nextMonthTarget, { months: 1 });
-
-		const lastDay = this._dateAdapter.endOfMonth(nextMonthTarget);
-
-		// if we are on a date that does not exist in the next month, clamp to the last day of the month.
-		let targetDate: typeof focusedDate;
-		if (date > this._dateAdapter.getDate(lastDay)) {
-			targetDate = lastDay;
-		} else {
-			targetDate = this._dateAdapter.set(nextMonthTarget, { day: date });
-		}
-
-		// if the date is disabled, but there are available dates in the month, focus the constrained date.
-		return { targetDate, possibleDate: this._calendar.constrainDate(targetDate) };
+		// Start at the first so the 31st doesn't overflow a shorter month
+		const month = this._dateAdapter.add(this._dateAdapter.startOfMonth(focusedDate), { months: 1 });
+		const lastDay = this._dateAdapter.getDate(this._dateAdapter.endOfMonth(month));
+		return this._dateAdapter.set(month, { day: Math.min(day, lastDay) });
 	}
 }
