@@ -1,6 +1,7 @@
 import { computed, DestroyRef, Directive, ElementRef, inject, input } from '@angular/core';
 import { injectDateAdapter } from '@spartan-ng/brain/date-time';
 import { injectBrnCalendar } from './brn-calendar.token';
+import { findEnabledDateInMonth } from './utils/find-enabled-date-in-month';
 
 @Directive({
 	selector: 'button[brnCalendarCellButton]',
@@ -147,18 +148,21 @@ export class BrnCalendarCellButton<T> {
 		event.preventDefault();
 		event.stopPropagation();
 
-		const date = this._dateAdapter.getDate(this._calendar.focusedDate());
-
-		let previousMonthTarget = this._dateAdapter.startOfMonth(this._calendar.focusedDate());
-		previousMonthTarget = this._dateAdapter.subtract(previousMonthTarget, { months: 1 });
-
-		const lastDay = this._dateAdapter.endOfMonth(previousMonthTarget);
-
-		// if we are on a date that does not exist in the previous month, we should focus the last day of the month.
-		if (date > this._dateAdapter.getDate(lastDay)) {
-			this._calendar.setFocusedDate(lastDay);
-		} else {
-			this._calendar.setFocusedDate(this._dateAdapter.set(previousMonthTarget, { day: date }));
+		const day = this._dateAdapter.getDate(this._calendar.focusedDate());
+		const month = this._dateAdapter.subtract(
+			this._dateAdapter.startOfMonth(this._calendar.focusedDate()),
+			{ months: 1 },
+		);
+		const lastDay = this._dateAdapter.getDate(this._dateAdapter.endOfMonth(month));
+		const targetDate = this._dateAdapter.set(month, { day: Math.min(day, lastDay) });
+		const focusDate = findEnabledDateInMonth(
+			targetDate,
+			this._dateAdapter,
+			(date) => this._calendar.isDateDisabled(date),
+			-1,
+		);
+		if (focusDate !== undefined) {
+			this._calendar.setFocusedDate(focusDate);
 		}
 	}
 
@@ -169,18 +173,21 @@ export class BrnCalendarCellButton<T> {
 		event.preventDefault();
 		event.stopPropagation();
 
-		const date = this._dateAdapter.getDate(this._calendar.focusedDate());
-
-		let nextMonthTarget = this._dateAdapter.startOfMonth(this._calendar.focusedDate());
-		nextMonthTarget = this._dateAdapter.add(nextMonthTarget, { months: 1 });
-
-		const lastDay = this._dateAdapter.endOfMonth(nextMonthTarget);
-
-		// if we are on a date that does not exist in the next month, we should focus the last day of the month.
-		if (date > this._dateAdapter.getDate(lastDay)) {
-			this._calendar.setFocusedDate(lastDay);
-		} else {
-			this._calendar.setFocusedDate(this._dateAdapter.set(nextMonthTarget, { day: date }));
+		const day = this._dateAdapter.getDate(this._calendar.focusedDate());
+		const month = this._dateAdapter.add(
+			this._dateAdapter.startOfMonth(this._calendar.focusedDate()),
+			{ months: 1 },
+		);
+		const lastDay = this._dateAdapter.getDate(this._dateAdapter.endOfMonth(month));
+		const targetDate = this._dateAdapter.set(month, { day: Math.min(day, lastDay) });
+		const focusDate = findEnabledDateInMonth(
+			targetDate,
+			this._dateAdapter,
+			(date) => this._calendar.isDateDisabled(date),
+			1,
+		);
+		if (focusDate !== undefined) {
+			this._calendar.setFocusedDate(focusDate);
 		}
 	}
 
