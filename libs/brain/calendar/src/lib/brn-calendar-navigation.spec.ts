@@ -72,6 +72,32 @@ describe('calendar month navigation', () => {
 		expect(fixture.componentInstance.calendar().focusedDate()).toEqual(new Date(2026, 9, 9));
 	});
 
+	it('finds an allowed date when a min boundary cuts into the previous month', async () => {
+		const { fixture } = await render(CalendarNavigationTest);
+		fixture.componentInstance.focus = new Date(2026, 10, 18);
+		fixture.componentInstance.min = new Date(2026, 9, 22);
+		fixture.detectChanges();
+
+		const previous = screen.getByRole('button', { name: 'Go to the previous month' });
+		expect(previous).toBeEnabled();
+		fireEvent.click(previous);
+		fixture.detectChanges();
+
+		expect(fixture.componentInstance.calendar().focusedDate()).toEqual(new Date(2026, 9, 22));
+	});
+
+	it('keeps dates inside shorter months', async () => {
+		const { fixture } = await render(CalendarNavigationTest);
+		fixture.componentInstance.focus = new Date(2026, 0, 31);
+		fixture.componentInstance.dateDisabled = () => false;
+		fixture.detectChanges();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Go to the next month' }));
+		fixture.detectChanges();
+
+		expect(fixture.componentInstance.calendar().focusedDate()).toEqual(new Date(2026, 1, 28));
+	});
+
 	it('keeps min/max boundaries and the calendar disabled state', async () => {
 		const { fixture } = await render(CalendarNavigationTest);
 		const next = screen.getByRole('button', { name: 'Go to the next month' });
