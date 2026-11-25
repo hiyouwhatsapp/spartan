@@ -1,3 +1,4 @@
+import type { BooleanInput } from '@angular/cdk/coercion';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { BrnInputOtp, BrnInputOtpInput, type InputMode } from '@spartan-ng/brain/input-otp';
 import { classes, hlm } from '@spartan-ng/helm/utils';
@@ -15,6 +16,7 @@ import type { ClassValue } from 'cn';
 				'length',
 				'value',
 				'disabled',
+				'forceInvalid',
 				'inputId',
 				'hostStyles',
 				'autofocus',
@@ -26,13 +28,19 @@ import type { ClassValue } from 'cn';
 			outputs: ['valueChange', 'completed'],
 		},
 	],
-	host: { 'data-slot': 'input-otp' },
+	host: {
+		'data-slot': 'input-otp',
+		'[attr.aria-describedby]': 'null',
+		'[attr.aria-invalid]': 'null',
+	},
 	template: `
 		<ng-content />
 		<input
 			brnInputOtpInput
 			[autocomplete]="inputAutocomplete()"
 			[inputMode]="inputMode()"
+			[aria-describedby]="ariaDescribedby()"
+			[aria-invalid]="ariaInvalid()"
 			[class]="_inputClass()"
 			[inputStyles]="inputStyles()"
 		/>
@@ -44,6 +52,12 @@ export class HlmInputOtp {
 
 	/** Virtual keyboard appearance on mobile */
 	public readonly inputMode = input<InputMode>('numeric');
+
+	/** IDs of additional descriptions for the focusable input. */
+	public readonly ariaDescribedby = input<string | null>(null, { alias: 'aria-describedby' });
+
+	/** Overrides the announced invalid state without changing the visual error state. */
+	public readonly ariaInvalid = input<BooleanInput>(undefined, { alias: 'aria-invalid' });
 
 	/** Classes applied to the input element. */
 	public readonly inputClass = input<ClassValue>('');

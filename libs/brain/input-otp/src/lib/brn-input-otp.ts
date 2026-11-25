@@ -45,7 +45,7 @@ export class BrnInputOtp implements ControlValueAccessor {
 	public readonly invalid = this._fieldControl?.invalid;
 	public readonly touched = this._fieldControl?.touched;
 	public readonly dirty = this._fieldControl?.dirty;
-	public readonly spartanInvalid = this._fieldControl?.spartanInvalid;
+	public readonly spartanInvalid = computed(() => this.forceInvalid() || !!this._fieldControl?.spartanInvalid());
 
 	/** Whether the input has focus. */
 	protected readonly _focused = signal<boolean>(false);
@@ -69,6 +69,9 @@ export class BrnInputOtp implements ControlValueAccessor {
 
 	/** @internal The disabled state as a readonly signal */
 	public readonly disabledState = this._disabled.asReadonly();
+
+	/** Whether to force the entire control into an invalid state. */
+	public readonly forceInvalid = input<boolean, BooleanInput>(false, { transform: booleanAttribute });
 
 	/** The number of slots. */
 	public readonly length = input.required<number, NumberInput>({ transform: numberAttribute });

@@ -137,6 +137,20 @@ describe('BrnInputOtp', () => {
 			expect(input).toHaveAttribute('inputMode', 'tel');
 		});
 
+		it('announces forced invalid state on the input without dropping a manual description', async () => {
+			const { getByRole } = await render(
+				`<div brnInputOtp length="1" forceInvalid>
+					<input brnInputOtpInput aria-describedby="help" />
+				</div>
+				<p id="help">Enter a digit.</p>`,
+				{ imports: [BrnInputOtp, BrnInputOtpInput] },
+			);
+
+			const input = getByRole('textbox');
+			expect(input).toHaveAttribute('aria-invalid', 'true');
+			expect(input).toHaveAttribute('aria-describedby', 'help');
+		});
+
 		it('renders with default input mode numeric', async () => {
 			const { input } = await setup({ length: 6 });
 

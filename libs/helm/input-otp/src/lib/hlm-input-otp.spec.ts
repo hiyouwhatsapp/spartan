@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { render } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { HlmInputOtpImports } from '../index';
@@ -32,6 +33,30 @@ class HlmInputOtpFormHost {
 	});
 }
 
+@Component({
+	selector: 'hlm-input-otp-field-host',
+	imports: [ReactiveFormsModule, HlmFieldImports, HlmInputOtpImports],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<form [formGroup]="form">
+			<div hlmField>
+				<label for="otp-code" hlmFieldLabel>Verification code</label>
+				<hlm-input-otp length="6" inputId="otp-code" formControlName="otp" aria-describedby="custom-hint custom-hint">
+					<hlm-input-otp-slot index="0" />
+				</hlm-input-otp>
+				<p hlmFieldDescription id="field-hint">Enter all six digits.</p>
+				<hlm-field-error id="field-error">The verification code is required.</hlm-field-error>
+			</div>
+		</form>
+		<p id="custom-hint">Use the code you received.</p>
+	`,
+})
+class HlmInputOtpFieldHost {
+	public readonly form = new FormGroup({
+		otp: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+	});
+}
+
 describe('HlmInputOtp', () => {
 	const setup = async () => {
 		const result = await render(
@@ -55,6 +80,43 @@ describe('HlmInputOtp', () => {
 
 		return { ...result, input, user: userEvent.setup() };
 	};
+
+	it('describes the focused input and follows the Field error state', async () => {
+		const { container, fixture, getByRole } = await render(HlmInputOtpFieldHost);
+		const input = getByRole('textbox', { name: 'Verification code' });
+		const host = container.querySelector('hlm-input-otp');
+
+		input.focus();
+		await fixture.whenStable();
+		expect(document.activeElement).toBe(input);
+		expect(host?.getAttribute('aria-describedby')).toBeNull();
+		expect(input.getAttribute('aria-describedby')).toBe('custom-hint field-hint');
+		expect(input.getAttribute('aria-invalid')).toBeNull();
+
+		input.blur();
+		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(input.getAttribute('aria-invalid')).toBe('true');
+		expect(input.getAttribute('aria-describedby')).toBe('custom-hint field-hint field-error');
+
+		fixture.componentInstance.form.controls.otp.setValue('123456');
+		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(input.getAttribute('aria-invalid')).toBeNull();
+		expect(input.getAttribute('aria-describedby')).toBe('custom-hint field-hint');
+	});
+
+	it('allows an explicit aria invalid override without changing the slot state', async () => {
+		const { container, getByRole } = await render(
+			`<hlm-input-otp length="1" forceInvalid aria-invalid="false">
+				<hlm-input-otp-slot index="0" />
+			</hlm-input-otp>`,
+			{ imports: [HlmInputOtpImports] },
+		);
+
+		expect(getByRole('textbox').getAttribute('aria-invalid')).toBeNull();
+		expect(container.querySelector('brn-input-otp-slot')?.getAttribute('data-matches-spartan-invalid')).toBe('true');
+	});
 
 	it('renders a hidden input and six slots', async () => {
 		const { container, input } = await setup();
