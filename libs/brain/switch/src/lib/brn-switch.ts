@@ -26,7 +26,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { BrnFieldControl, provideBrnLabelable } from '@spartan-ng/brain/field';
+import { BrnFieldControl, BrnFieldControlDescribedBy, provideBrnLabelable } from '@spartan-ng/brain/field';
 import type { ChangeFn, TouchFn } from '@spartan-ng/brain/forms';
 
 export const BRN_SWITCH_VALUE_ACCESSOR = {
@@ -44,6 +44,7 @@ let uniqueIdCounter = 0;
 @Component({
 	selector: 'brn-switch',
 	exportAs: 'brnSwitch',
+	imports: [BrnFieldControlDescribedBy],
 	providers: [BRN_SWITCH_VALUE_ACCESSOR, provideBrnLabelable(BrnSwitch)],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	hostDirectives: [BrnFieldControl],
@@ -76,7 +77,8 @@ let uniqueIdCounter = 0;
 			[attr.aria-required]="required() ? 'true' : null"
 			[attr.aria-label]="ariaLabel() || null"
 			[attr.aria-labelledby]="mutableAriaLabelledby() || null"
-			[attr.aria-describedby]="ariaDescribedby() || null"
+			brnFieldControlDescribedBy
+			[aria-describedby]="ariaDescribedby()"
 			[attr.aria-invalid]="_spartanInvalid() ? 'true' : null"
 			[attr.data-dirty]="_dirty?.() ? 'true' : null"
 			[attr.data-touched]="_touched?.() ? 'true' : null"

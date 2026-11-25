@@ -10,3 +10,5 @@ The field package now exposes helpers to automatically wire `aria-describedby` f
 2. Apply `brnFieldControlDescribedBy` on the focusable native element (or host directive for standalone input-like directives).
 3. Let the description and error elements remain siblings inside the field; their IDs are generated automatically if you don't provide one.
 4. If you need to expose a custom `aria-describedby`, the directive will merge it with the field-generated IDs.
+
+Checkboxes and switches inside a field put the merged IDs on their focusable buttons, not on the component wrappers. You can still pass a custom `aria-describedby` to either control.

@@ -13,10 +13,11 @@ import { HlmCheckbox } from '../../index';
 			<div hlmField>
 				<!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -->
 				<label hlmFieldLabel>Accept terms *</label>
-				<hlm-checkbox formControlName="agreement"></hlm-checkbox>
-				<p hlmFieldDescription>You must agree to proceed.</p>
-				<hlm-field-error>Agree to continue.</hlm-field-error>
+				<hlm-checkbox formControlName="agreement" aria-describedby="custom-hint custom-hint" />
+				<p hlmFieldDescription id="field-hint">You must agree to proceed.</p>
+				<hlm-field-error id="field-error">Agree to continue.</hlm-field-error>
 			</div>
+			<p id="custom-hint">You can read the terms before agreeing.</p>
 		</form>
 	`,
 })
@@ -37,23 +38,23 @@ describe('HlmCheckbox form integration', () => {
 		fixture.detectChanges();
 	});
 
-	it('collects hint + error ids on checkbox', () => {
+	it('merges manual and field ids on the focusable checkbox', async () => {
 		const host = fixture.componentInstance as HlmCheckboxHost;
+		const wrapper: HTMLElement = fixture.nativeElement.querySelector('hlm-checkbox');
+		const checkbox = wrapper.querySelector('[role="checkbox"]');
+
+		await fixture.whenStable();
+		expect(wrapper.getAttribute('aria-describedby')).toBeNull();
+		expect(checkbox?.getAttribute('aria-describedby')).toBe('custom-hint field-hint');
+
 		host.form.markAllAsTouched();
-		host.form.get('agreement')?.updateValueAndValidity();
 		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(checkbox?.getAttribute('aria-describedby')).toBe('custom-hint field-hint field-error');
 
-		const description: HTMLElement | null = fixture.nativeElement.querySelector('[data-slot="field-description"]');
-		const error: HTMLElement | null = fixture.nativeElement.querySelector('[data-slot="field-error"]');
-		const checkbox = fixture.nativeElement.querySelector('hlm-checkbox');
-
-		expect(host.form.invalid).toBeTruthy();
-		expect(description).toBeTruthy();
-		expect(error).toBeTruthy();
-
-		const describedBy = checkbox.getAttribute('aria-describedby') ?? '';
-		expect(describedBy.split(' ')).toContain(description!.id);
-		// TODO should the error id be included in aria-describedby when the field is invalid? If so, we need to add it to the hlm-checkbox component.
-		// expect(describedBy.split(' ')).toContain(error!.id);
+		host.form.controls.agreement.setValue(true);
+		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(checkbox?.getAttribute('aria-describedby')).toBe('custom-hint field-hint');
 	});
 });
