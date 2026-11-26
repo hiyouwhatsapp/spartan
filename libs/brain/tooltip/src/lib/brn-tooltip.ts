@@ -29,6 +29,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { addAriaReferencedId, getAriaReferenceIds, removeAriaReferencedId } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
 import type { NumberInput } from '@angular/cdk/coercion';
 import { hasModifierKey } from '@angular/cdk/keycodes';
@@ -46,6 +47,8 @@ import {
 } from './brn-tooltip-position';
 import { BrnTooltipType } from './brn-tooltip-type';
 import { injectBrnTooltipDefaultOptions } from './brn-tooltip.token';
+
+const ARIA_DESCRIBED_BY = 'aria-describedby';
 
 interface DelayConfig {
 	isShow: boolean;
@@ -74,6 +77,7 @@ export class BrnTooltip {
 	private _componentRef: ComponentRef<BrnTooltipContent> | undefined = undefined;
 	private _overlayRef: OverlayRef | undefined = undefined;
 	private _ariaEffectRef: ReturnType<typeof effect> | undefined = undefined;
+	private _ariaDescriptionId: string | undefined = undefined;
 	private _positionChangeSub: Subscription | undefined = undefined;
 	/** Bumped on every close/show so a pending exit-animation teardown can detect it was superseded. */
 	private _closeGeneration = 0;
@@ -400,7 +404,7 @@ export class BrnTooltip {
 			this._ariaEffectRef = effect(() => {
 				const tooltipId = this._componentRef?.instance.id();
 				if (tooltipId) {
-					this._renderer.setAttribute(this._elementRef.nativeElement, 'aria-describedby', tooltipId);
+					this._addAriaDescribedBy(tooltipId);
 					this._ariaEffectRef?.destroy();
 					this._ariaEffectRef = undefined;
 				}
@@ -459,14 +463,28 @@ export class BrnTooltip {
 		this._clearAriaDescribedBy();
 		this._positionChangeSub?.unsubscribe();
 		this._positionChangeSub = undefined;
-		this._renderer.removeAttribute(this._elementRef.nativeElement, 'aria-describedby');
 		this._overlayRef?.detach();
 	}
 
+	private _addAriaDescribedBy(tooltipId: string): void {
+		const trigger = this._elementRef.nativeElement;
+		if (getAriaReferenceIds(trigger, ARIA_DESCRIBED_BY).includes(tooltipId)) return;
+
+		addAriaReferencedId(trigger, ARIA_DESCRIBED_BY, tooltipId);
+		this._ariaDescriptionId = tooltipId;
+	}
+
 	private _clearAriaDescribedBy(): void {
-		if (this._ariaEffectRef) {
-			this._ariaEffectRef.destroy();
-			this._ariaEffectRef = undefined;
+		this._ariaEffectRef?.destroy();
+		this._ariaEffectRef = undefined;
+
+		const tooltipId = this._ariaDescriptionId;
+		this._ariaDescriptionId = undefined;
+		if (!tooltipId) return;
+
+		const trigger = this._elementRef.nativeElement;
+		if (getAriaReferenceIds(trigger, ARIA_DESCRIBED_BY).includes(tooltipId)) {
+			removeAriaReferencedId(trigger, ARIA_DESCRIBED_BY, tooltipId);
 		}
 	}
 }

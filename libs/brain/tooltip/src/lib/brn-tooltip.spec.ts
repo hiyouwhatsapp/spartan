@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { userEvent } from '@vitest/browser/context';
@@ -26,6 +26,37 @@ class FocusTooltipHost {}
 const pointer = (target: Element, type: 'pointerenter' | 'pointerleave') =>
 	target.dispatchEvent(new PointerEvent(type, { pointerType: 'mouse' }));
 
+@Component({
+	imports: [BrnTooltip],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<p id="field-help">Field help</p>
+		<p id="extra-help">More information</p>
+		<p id="field-error">Field error</p>
+		<button brnTooltip="Tooltip" [attr.aria-describedby]="description()">Trigger</button>
+	`,
+})
+class DescribedTooltipHost {
+	public readonly description = signal('field-help extra-help');
+}
+
+const getTooltip = () => document.querySelector<HTMLElement>('[role="tooltip"]');
+
+async function showTooltip(trigger: HTMLElement) {
+	pointer(trigger, 'pointerenter');
+	await vi.waitFor(() => {
+		const id = getTooltip()?.id;
+		expect(id).toBeTruthy();
+		expect(trigger.getAttribute('aria-describedby')?.split(/\s+/)).toContain(id);
+	});
+	return getTooltip()!;
+}
+
+async function hideTooltip(trigger: HTMLElement) {
+	pointer(trigger, 'pointerleave');
+	await vi.waitFor(() => expect(getTooltip()).toBeNull());
+}
+
 describe('BrnTooltip', () => {
 	// The real mouse starts at (0,0), where both the trigger and the not-yet-positioned overlay sit.
 	// Linux Chrome then fires a trusted pointerenter on the overlay that the synthetic events never undo.
@@ -40,6 +71,54 @@ describe('BrnTooltip', () => {
 	afterEach(() => {
 		TestBed.resetTestingModule();
 		document.querySelectorAll('.cdk-overlay-container').forEach((el) => el.remove());
+	});
+
+	it('preserves existing description IDs while shown and after closing', async () => {
+		const fixture = TestBed.createComponent(DescribedTooltipHost);
+		await fixture.whenStable();
+		const trigger: HTMLElement = fixture.nativeElement.querySelector('button');
+
+		const tooltip = await showTooltip(trigger);
+		expect(trigger).toHaveAttribute('aria-describedby', `field-help extra-help ${tooltip.id}`);
+
+		await hideTooltip(trigger);
+		expect(trigger).toHaveAttribute('aria-describedby', 'field-help extra-help');
+	});
+
+	it('keeps descriptions changed by an Angular binding while open', async () => {
+		const fixture = TestBed.createComponent(DescribedTooltipHost);
+		await fixture.whenStable();
+		const trigger: HTMLElement = fixture.nativeElement.querySelector('button');
+
+		await showTooltip(trigger);
+		fixture.componentInstance.description.set('field-help field-error');
+		await fixture.whenStable();
+		expect(trigger).toHaveAttribute('aria-describedby', 'field-help field-error');
+
+		await hideTooltip(trigger);
+		expect(trigger).toHaveAttribute('aria-describedby', 'field-help field-error');
+	});
+
+	it('clears the tooltip ID when an open directive is destroyed', async () => {
+		const fixture = TestBed.createComponent(DescribedTooltipHost);
+		await fixture.whenStable();
+		const trigger: HTMLElement = fixture.nativeElement.querySelector('button');
+
+		await showTooltip(trigger);
+		fixture.destroy();
+
+		expect(trigger).toHaveAttribute('aria-describedby', 'field-help extra-help');
+	});
+
+	it('removes the attribute when the tooltip was its only description', async () => {
+		const fixture = TestBed.createComponent(TooltipHost);
+		await fixture.whenStable();
+		const trigger: HTMLElement = fixture.nativeElement.querySelector('button');
+
+		await showTooltip(trigger);
+		await hideTooltip(trigger);
+
+		expect(trigger).not.toHaveAttribute('aria-describedby');
 	});
 
 	it('still hides on trigger leave after the content was hovered while closing', async () => {
